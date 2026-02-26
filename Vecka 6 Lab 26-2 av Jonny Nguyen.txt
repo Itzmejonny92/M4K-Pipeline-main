@@ -1,0 +1,29 @@
+Vecka 6 Lab 26/2 av Jonny Nguyen
+
+Jag kopplade upp mig mot vårt GKE-kluster med personlig kubeconfig i WSL och verifierade att resurserna i namespace m4k-gang körde.
+Jag gick igenom deployments, services, ingress, configmaps och secrets för att förstå hur frontend, api, redis och monitor hänger ihop.
+
+Felsökning jag stötte på:
+Min egen deployment (jonny-hello) fastnade i Pending.
+Via kubectl describe pod såg jag FailedScheduling med Insufficient cpu och att autoscaler misslyckade med FailedScaleUp: GCE quota exceeded.
+
+Lösning:
+Jag sänkte resource requests/limits för min pod och frigjorde kapacitet så att den kunde schemaläggas.
+Efter det blev deployment Running.
+
+Egen container:
+Jag byggde en egen Node.js-app (jonny-hello), pushade imagen till Artifact Registry
+(europe-north1-docker.pkg.dev/chas-devsecops-2026/student-apps/jonny-hello:v1)
+och deployade den i klustret.
+Jag testade tjänsten via port-forward och verifierade svar i webbläsaren.
+
+Extra arbete:
+Jag gjorde en uppdatering till v2 genom att ändra appen, bygga och pusha ny image
+(.../jonny-hello:v2), och uppdatera deploymenten med kubectl set image.
+Rollouten fastnade först pga kapacitetsläge vid standard-strategi, så jag patchade deployment-strategin
+(maxSurge=0, maxUnavailable=1) för att möjliggöra uppdatering utan extra pod-overhead.
+Därefter verifierade jag att tjänsten svarade med version v2.
+
+Status: Green
+Motivering: Jag har utforskat namespace, förstått resurserna, felsökt schemaläggningsproblem,
+deployat egen container och genomfört verifierad uppdatering till v2.
