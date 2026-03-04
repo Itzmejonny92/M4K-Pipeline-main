@@ -3,8 +3,7 @@ resource "kubernetes_ingress_v1" "team_dashboard" {
     name      = "team-dashboard"
     namespace = var.namespace
     labels = {
-      app        = "team-dashboard"
-      managed-by = "terraform"
+      app = "team-dashboard"
     }
 
     annotations = var.enable_tls ? {
@@ -34,7 +33,7 @@ resource "kubernetes_ingress_v1" "team_dashboard" {
           path_type = "Prefix"
           backend {
             service {
-              name = kubernetes_service.frontend.metadata[0].name
+              name = module.frontend.service_name
               port {
                 number = 80
               }
@@ -45,7 +44,7 @@ resource "kubernetes_ingress_v1" "team_dashboard" {
     }
   }
 
-  depends_on = [kubernetes_service.frontend]
+  depends_on = [module.frontend]
 }
 
 resource "kubernetes_manifest" "team_dashboard_certificate" {

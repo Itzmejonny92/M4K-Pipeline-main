@@ -7,4 +7,9 @@ terraform {
       version = "~> 2.35"
     }
   }
+
+  backend "gcs" {
+    bucket = "chas-tf-state-m4k-gang"
+    prefix = "terraform/state/jonny"
+  }
 }

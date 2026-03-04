@@ -1,7 +1,51 @@
 variable "namespace" {
-  description = "Team namespace"
+  description = "Kubernetes namespace for your team"
   type        = string
-  default     = "m4k-gang"
+}
+
+variable "team_name" {
+  description = "Human-readable team name"
+  type        = string
+}
+
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+  default     = "production"
+
+  validation {
+    condition     = contains(["development", "staging", "production"], var.environment)
+    error_message = "Environment must be development, staging, or production."
+  }
+}
+
+variable "redis_image" {
+  description = "Redis container image"
+  type        = string
+  default     = "redis:7-alpine"
+}
+
+variable "api_image" {
+  description = "API backend container image"
+  type        = string
+  default     = "gcr.io/chas-devsecops-2026/team-dashboard-api:v1"
+}
+
+variable "frontend_image" {
+  description = "Frontend container image"
+  type        = string
+  default     = "gcr.io/chas-devsecops-2026/team-dashboard-frontend:v1"
+}
+
+variable "api_replicas" {
+  description = "Number of API replicas"
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.api_replicas >= 1 && var.api_replicas <= 3
+    error_message = "Replicas must be between 1 and 3 (namespace quota limit)."
+  }
 }
 
 variable "domain" {

@@ -3,8 +3,7 @@ resource "kubernetes_service_account" "monitor_sa" {
     name      = "monitor-sa"
     namespace = var.namespace
     labels = {
-      app        = "team-monitor"
-      managed-by = "terraform"
+      app = "team-monitor"
     }
   }
 }
@@ -64,14 +63,13 @@ resource "kubernetes_config_map" "monitor_config" {
     name      = "monitor-config"
     namespace = var.namespace
     labels = {
-      app        = "team-monitor"
-      managed-by = "terraform"
+      app = "team-monitor"
     }
   }
 
   data = {
     TEAM_NAME      = "m4k-gang"
-    API_ENDPOINT   = "https://chas-academy-devops-2026.vercel.app/api/team-status"
+    API_ENDPOINT   = "https://chas-academy-devops-2026-c5q0fqkbp-erkan-djafers-projects.vercel.app/api/team-status"
     CHECK_INTERVAL = "30000"
   }
 }
@@ -81,14 +79,17 @@ resource "kubernetes_secret" "monitor_secret" {
     name      = "monitor-secret"
     namespace = var.namespace
     labels = {
-      app        = "team-monitor"
-      managed-by = "terraform"
+      app = "team-monitor"
     }
   }
 
   type = "Opaque"
   data = {
     API_KEY = "tfk_kHurD4vB2Eww0R7no6gB2B4puX9gStv5WnGeEpi0kMM"
+  }
+
+  lifecycle {
+    ignore_changes = [data]
   }
 }
 
@@ -97,8 +98,7 @@ resource "kubernetes_deployment" "team_monitor" {
     name      = "team-monitor"
     namespace = var.namespace
     labels = {
-      app        = "team-monitor"
-      managed-by = "terraform"
+      app = "team-monitor"
     }
   }
 
