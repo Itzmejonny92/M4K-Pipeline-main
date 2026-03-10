@@ -82,6 +82,7 @@ module "redis" {
   readiness_exec_command          = ["redis-cli", "ping"]
   readiness_initial_delay_seconds = 5
   readiness_period_seconds        = 5
+  read_only_root_filesystem       = false
 
   cpu_request    = "100m"
   memory_request = "128Mi"

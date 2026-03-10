@@ -2,3 +2,11 @@ node_modules/
 .env
 .DS_Store
 kubectl
+terraform.tfvars
+*.auto.tfvars
+week6/m4k-gang-kubeconfig.yaml
+week7-terraform-local-plan/
+week7-terraform/.tf-local/
+first-pipeline-hardening-distroless.tar
+trivy-hardened.json
+trivy-node18.json

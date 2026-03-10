@@ -130,6 +130,12 @@ variable "readiness_period_seconds" {
   default = 10
 }
 
+variable "read_only_root_filesystem" {
+  description = "Whether the container root filesystem should be read-only"
+  type        = bool
+  default     = true
+}
+
 resource "kubernetes_deployment" "app" {
   metadata {
     name      = var.name
@@ -149,6 +155,13 @@ resource "kubernetes_deployment" "app" {
         labels = merge({ app = var.name }, var.labels)
       }
       spec {
+        security_context {
+          run_as_non_root = true
+          seccomp_profile {
+            type = "RuntimeDefault"
+          }
+        }
+
         dynamic "image_pull_secrets" {
           for_each = var.image_pull_secret == null ? [] : [var.image_pull_secret]
           content {
@@ -159,6 +172,16 @@ resource "kubernetes_deployment" "app" {
         container {
           name  = var.name
           image = var.image
+
+          security_context {
+            allow_privilege_escalation = false
+            read_only_root_filesystem  = var.read_only_root_filesystem
+
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
+
           port {
             container_port = var.port
             name           = var.container_port_name

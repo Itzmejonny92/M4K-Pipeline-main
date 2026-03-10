@@ -65,3 +65,9 @@ variable "cluster_issuer" {
   type        = string
   default     = "letsencrypt-prod"
 }
+
+variable "monitor_api_key" {
+  description = "API key used by the team monitor"
+  type        = string
+  sensitive   = true
+}

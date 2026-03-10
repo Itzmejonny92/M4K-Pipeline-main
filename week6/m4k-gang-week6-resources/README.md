@@ -6,7 +6,7 @@
 - **Namespace:** m4k-gang
 - **App URL:** http://m4k-gang.chas.retro87.se
 - **API Endpoint:** https://chas-academy-devops-2026.vercel.app/api/team-status
-- **API Key:** `tfk_kHurD4vB2Eww0R7no6gB2B4puX9gStv5WnGeEpi0kMM` _(already filled in your manifests!)_
+- **API Key:** `REPLACE_WITH_TEAM_FLAGS_API_KEY` _(set locally, do not commit the real value)_
 
 ---
 

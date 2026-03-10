@@ -85,7 +85,7 @@ resource "kubernetes_secret" "monitor_secret" {
 
   type = "Opaque"
   data = {
-    API_KEY = "tfk_kHurD4vB2Eww0R7no6gB2B4puX9gStv5WnGeEpi0kMM"
+    API_KEY = var.monitor_api_key
   }
 
   lifecycle {
@@ -121,6 +121,13 @@ resource "kubernetes_deployment" "team_monitor" {
       spec {
         service_account_name = kubernetes_service_account.monitor_sa.metadata[0].name
 
+        security_context {
+          run_as_non_root = true
+          seccomp_profile {
+            type = "RuntimeDefault"
+          }
+        }
+
         image_pull_secrets {
           name = "gcr-secret"
         }
@@ -129,6 +136,15 @@ resource "kubernetes_deployment" "team_monitor" {
           name              = "monitor"
           image             = "gcr.io/chas-devsecops-2026/team-monitor:v1"
           image_pull_policy = "Always"
+
+          security_context {
+            allow_privilege_escalation = false
+            read_only_root_filesystem  = true
+
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
 
           env_from {
             config_map_ref {
