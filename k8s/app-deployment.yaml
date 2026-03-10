@@ -14,6 +14,10 @@ spec:
       labels:
         app: m4k-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: m4k-app
         image: m4k-app:v2
@@ -39,6 +43,12 @@ spec:
           periodSeconds: 15
           timeoutSeconds: 2
           failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
         resources:
           requests:
             cpu: "100m"
