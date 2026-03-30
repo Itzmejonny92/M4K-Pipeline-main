@@ -1,24 +1,41 @@
-# GitHub Actions och lokal kind-demo
+# GitHub Actions till Kubernetes
 
-Den har setupen ar anpassad for lokal utveckling i VS Code med WSL och ett lokalt `kind`-kluster.
-
-GitHub Actions gor bara CI och container-publicering:
+Den har setupen gor workflowen i `.github/workflows/pipeline.yml` till en riktig end-to-end pipeline:
 
 1. `npm ci`
 2. `npm test`
 3. Docker build
 4. push till GHCR
 5. Trivy scan
-
-Kubernetes-deployment kor ni lokalt fran WSL under demon.
+6. deploy till Kubernetes med `kubectl apply -k k8s/`
 
 ## Secrets som behovs
 
 Lagg in dessa under repository secrets eller environment secrets i GitHub:
 
+- `KUBE_CONFIG_STAGING_B64`
+- `KUBE_CONFIG_PRODUCTION_B64`
 - `GHCR_USERNAME`
 - `GHCR_TOKEN`
 - `SLACK_WEBHOOK_URL` valfri
+
+## Hur du skapar kubeconfig-secret
+
+Exportera kubeconfig-filen som base64 utan radbrytningar.
+
+Linux/macOS:
+
+```bash
+base64 -w 0 ~/.kube/config
+```
+
+PowerShell:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME/.kube/config"))
+```
+
+Klistra in resultatet i GitHub Secret.
 
 ## GHCR
 
@@ -34,32 +51,30 @@ och aven:
 ghcr.io/<github-owner>/first-pipeline:latest
 ```
 
-## Lokal Kubernetes-demo i WSL
+## Viktigt om image pull i klustret
 
-Om du kor `kind` lokalt i WSL ska deploymenten goras lokalt, inte fran GitHub Actions.
+Workflowen skapar ett `imagePullSecret` med namn `ghcr-creds` i namespace `boiler-room`.
 
-Exempel:
+Anvand ett PAT i `GHCR_TOKEN` som har ratt att lasa GHCR-packages. `GHCR_USERNAME` ska vara GitHub-anvandaren som tokenet tillhor.
 
-```bash
-docker build -t m4k-pipeline:demo .
-kind load docker-image m4k-pipeline:demo --name boiler-room
-./scripts/deploy.sh demo
-kubectl get all -n boiler-room
-kubectl port-forward service/first-pipeline 3000:3000 -n boiler-room
-```
+## Branchlogik
 
-Det ar den rekommenderade modellen for presentationen:
-
-- GitHub Actions visar CI, image build/push och Trivy
-- WSL + kind visar Kubernetes-deployment live
+- Pull request mot `main` deployar till `staging`
+- Push till `main` deployar till `production`
 
 ## Vanliga fel
 
+- `KUBE_CONFIG_STAGING_B64 is not set`
+  Da saknas GitHub Secret for staging.
+
+- `KUBE_CONFIG_PRODUCTION_B64 is not set`
+  Da saknas GitHub Secret for production.
+
 - `GHCR_USERNAME or GHCR_TOKEN is not set`
-  Da saknas registry-auth for att pusha imagen till GHCR.
+  Da saknas registry-auth for att Kubernetes ska kunna dra imagen.
 
 - `ImagePullBackOff`
-  Om du kor lokalt kind ska du normalt ladda imagen direkt i klustret med `kind load docker-image`.
+  Klustret kommer inte at imagen i GHCR.
 
 - `rollout status` timeout
   Poddar startar inte korrekt. Kontrollera `kubectl get pods -n boiler-room` och `kubectl describe pod`.
