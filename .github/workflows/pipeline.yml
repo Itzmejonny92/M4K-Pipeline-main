@@ -15,16 +15,11 @@ env:
   NODE_VERSION: "18"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/first-pipeline
-  K8S_NAMESPACE: boiler-room
-  APP_NAME: first-pipeline
 
 jobs:
   ci:
     name: Build Test Scan
     runs-on: ubuntu-latest
-    outputs:
-      image-ref: ${{ steps.image.outputs.image_ref }}
-      image-tag: ${{ steps.image.outputs.image_tag }}
 
     steps:
       - name: Checkout code
@@ -98,177 +93,11 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
 
-  deploy-staging:
-    name: Deploy Staging
-    runs-on: ubuntu-latest
-    needs: ci
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
-    environment:
-      name: staging
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Validate staging secrets
-        shell: bash
-        run: |
-          if [ -z "${{ secrets.KUBE_CONFIG_STAGING_B64 }}" ]; then
-            echo "KUBE_CONFIG_STAGING_B64 is not set."
-            exit 1
-          fi
-          if [ -z "${{ secrets.GHCR_USERNAME }}" ] || [ -z "${{ secrets.GHCR_TOKEN }}" ]; then
-            echo "GHCR_USERNAME or GHCR_TOKEN is not set."
-            exit 1
-          fi
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Configure kubeconfig
-        shell: bash
-        run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG_STAGING_B64 }}" | base64 -d > "$HOME/.kube/config"
-          chmod 600 "$HOME/.kube/config"
-
-      - name: Create registry pull secret
-        shell: bash
-        run: |
-          kubectl create namespace "${{ env.K8S_NAMESPACE }}" --dry-run=client -o yaml | kubectl apply -f -
-          kubectl -n "${{ env.K8S_NAMESPACE }}" create secret docker-registry ghcr-creds \
-            --docker-server="${{ env.REGISTRY }}" \
-            --docker-username="${{ secrets.GHCR_USERNAME }}" \
-            --docker-password="${{ secrets.GHCR_TOKEN }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Deploy image to staging
-        shell: bash
-        run: |
-          mkdir -p k8s/patches
-          cat > k8s/patches/configmap-version.yaml <<EOF
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: first-pipeline-config
-            namespace: ${K8S_NAMESPACE}
-          data:
-            APP_VERSION: "${{ needs.ci.outputs.image-tag }}"
-          EOF
-
-          kubectl apply -k k8s/
-          kubectl -n "${{ env.K8S_NAMESPACE }}" set image deployment/"${{ env.APP_NAME }}" \
-            "${{ env.APP_NAME }}"="${{ needs.ci.outputs.image-ref }}:${{ needs.ci.outputs.image-tag }}"
-          kubectl -n "${{ env.K8S_NAMESPACE }}" patch deployment "${{ env.APP_NAME }}" --type='strategic' -p \
-            '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"ghcr-creds"}]}}}}'
-          kubectl -n "${{ env.K8S_NAMESPACE }}" rollout status deployment/"${{ env.APP_NAME }}" --timeout=180s
-
-      - name: Slack notify staging deploy success
-        if: success() && secrets.SLACK_WEBHOOK_URL != ''
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          COMMIT_MESSAGE: ${{ github.event.pull_request.title || 'N/A' }}
-          COMMIT_AUTHOR: ${{ github.event.pull_request.user.login || github.actor }}
-          COMMIT_SHA: ${{ github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          payload=$(jq -n \
-            --arg text "[SUCCESS] Staging deploy completed\nRepository: ${{ github.repository }}\nAuthor: $COMMIT_AUTHOR\nCommit: $COMMIT_SHA\nMessage: $COMMIT_MESSAGE\nRun: $RUN_URL" \
-            '{text: $text}')
-
-          curl -fsS -X POST \
-            -H "Content-type: application/json" \
-            --data "$payload" \
-            "$SLACK_WEBHOOK_URL"
-
-  deploy-production:
-    name: Deploy Production
-    runs-on: ubuntu-latest
-    needs: ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment:
-      name: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Validate production secrets
-        shell: bash
-        run: |
-          if [ -z "${{ secrets.KUBE_CONFIG_PRODUCTION_B64 }}" ]; then
-            echo "KUBE_CONFIG_PRODUCTION_B64 is not set."
-            exit 1
-          fi
-          if [ -z "${{ secrets.GHCR_USERNAME }}" ] || [ -z "${{ secrets.GHCR_TOKEN }}" ]; then
-            echo "GHCR_USERNAME or GHCR_TOKEN is not set."
-            exit 1
-          fi
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Configure kubeconfig
-        shell: bash
-        run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG_PRODUCTION_B64 }}" | base64 -d > "$HOME/.kube/config"
-          chmod 600 "$HOME/.kube/config"
-
-      - name: Create registry pull secret
-        shell: bash
-        run: |
-          kubectl create namespace "${{ env.K8S_NAMESPACE }}" --dry-run=client -o yaml | kubectl apply -f -
-          kubectl -n "${{ env.K8S_NAMESPACE }}" create secret docker-registry ghcr-creds \
-            --docker-server="${{ env.REGISTRY }}" \
-            --docker-username="${{ secrets.GHCR_USERNAME }}" \
-            --docker-password="${{ secrets.GHCR_TOKEN }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Deploy image to production
-        shell: bash
-        run: |
-          mkdir -p k8s/patches
-          cat > k8s/patches/configmap-version.yaml <<EOF
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: first-pipeline-config
-            namespace: ${K8S_NAMESPACE}
-          data:
-            APP_VERSION: "${{ needs.ci.outputs.image-tag }}"
-          EOF
-
-          kubectl apply -k k8s/
-          kubectl -n "${{ env.K8S_NAMESPACE }}" set image deployment/"${{ env.APP_NAME }}" \
-            "${{ env.APP_NAME }}"="${{ needs.ci.outputs.image-ref }}:${{ needs.ci.outputs.image-tag }}"
-          kubectl -n "${{ env.K8S_NAMESPACE }}" patch deployment "${{ env.APP_NAME }}" --type='strategic' -p \
-            '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"ghcr-creds"}]}}}}'
-          kubectl -n "${{ env.K8S_NAMESPACE }}" rollout status deployment/"${{ env.APP_NAME }}" --timeout=180s
-
-      - name: Slack notify production deploy success
-        if: success() && secrets.SLACK_WEBHOOK_URL != ''
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message || 'N/A' }}
-          COMMIT_AUTHOR: ${{ github.event.head_commit.author.name || github.actor }}
-          COMMIT_SHA: ${{ github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          payload=$(jq -n \
-            --arg text "[SUCCESS] Production deploy completed\nRepository: ${{ github.repository }}\nAuthor: $COMMIT_AUTHOR\nCommit: $COMMIT_SHA\nMessage: $COMMIT_MESSAGE\nRun: $RUN_URL" \
-            '{text: $text}')
-
-          curl -fsS -X POST \
-            -H "Content-type: application/json" \
-            --data "$payload" \
-            "$SLACK_WEBHOOK_URL"
-
   notify-pipeline-failure:
     name: Notify Pipeline Failure
     runs-on: ubuntu-latest
-    needs: [ci, deploy-staging, deploy-production]
-    if: always() && (needs.ci.result == 'failure' || needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    needs: [ci]
+    if: always() && needs.ci.result == 'failure'
 
     steps:
       - name: Slack notify failure

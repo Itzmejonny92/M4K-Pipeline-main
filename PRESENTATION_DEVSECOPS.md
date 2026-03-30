@@ -31,7 +31,7 @@ Visa:
 
 Sagtips:
 
-"Var GitHub Actions-workflow kor pa push och pull request. Forst installeras beroenden med npm ci, sedan kors testerna, efter det byggs Docker-imagen och scannas med Trivy. Resultatet laddas upp som SARIF till GitHub Security."
+"Var GitHub Actions-workflow kor pa push och pull request. Forst installeras beroenden med npm ci, sedan kors testerna, efter det byggs Docker-imagen och scannas med Trivy. Resultatet laddas upp som SARIF till GitHub Security. Kubernetes-deploymenten visar vi lokalt fran WSL mot vart kind-kluster."
 
 Visa:
 
@@ -40,9 +40,9 @@ Visa:
 
 Poanger att namna:
 
-- PR mot `main` kan trigga staging-flode
-- push till `main` kan trigga production-flode
-- Slack-notifiering finns for success och failure
+- push och pull request triggar CI
+- imagen pushas till GHCR
+- Slack-notifiering finns for pipeline failure om ni valjer att anvanda den
 
 ### Person 3: Container och sakerhet, 3 minuter
 
@@ -66,7 +66,7 @@ Poanger att namna:
 
 Sagtips:
 
-"For runtime i kluster skapade vi Kubernetes-manifest. Appen kor som en Deployment med två repliker, exponeras via en Service och far konfiguration via ConfigMap och Secret. Vi har ocksa ett Mongo StatefulSet i repot for att visa stateful workload."
+"For runtime i kluster skapade vi Kubernetes-manifest. Appen kor som en Deployment med två repliker, exponeras via en Service och far konfiguration via ConfigMap och Secret. Vi har ocksa ett Mongo StatefulSet i repot for att visa stateful workload. Eftersom vart kluster ar lokalt i kind kor vi deploymenten fran WSL i stallet for direkt fran GitHub-hostade runners."
 
 Visa:
 
@@ -111,8 +111,8 @@ Live-demo:
 ### Del A: Visa pipeline, 3 till 4 minuter
 
 1. Oppna GitHub Actions.
-2. Visa att workflowen innehaller test, Docker build, Trivy och deploy-jobb.
-3. Forklara skillnaden mellan PR-flode och push till main.
+2. Visa att workflowen innehaller test, Docker build/push och Trivy.
+3. Forklara att Kubernetes-deploymenten kors lokalt mot kind i WSL eftersom klustret inte ar externt atkomligt fran GitHub Actions.
 
 ### Del B: Visa lokal verifiering, 3 minuter
 

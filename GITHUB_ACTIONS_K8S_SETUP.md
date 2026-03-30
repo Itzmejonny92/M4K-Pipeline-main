@@ -1,41 +1,24 @@
-# GitHub Actions till Kubernetes
+# GitHub Actions och lokal kind-demo
 
-Den har setupen gor workflowen i `.github/workflows/pipeline.yml` till en riktig end-to-end pipeline:
+Den har setupen ar anpassad for lokal utveckling i VS Code med WSL och ett lokalt `kind`-kluster.
+
+GitHub Actions gor bara CI och container-publicering:
 
 1. `npm ci`
 2. `npm test`
 3. Docker build
 4. push till GHCR
 5. Trivy scan
-6. deploy till Kubernetes med `kubectl apply -k k8s/`
+
+Kubernetes-deployment kor ni lokalt fran WSL under demon.
 
 ## Secrets som behovs
 
 Lagg in dessa under repository secrets eller environment secrets i GitHub:
 
-- `KUBE_CONFIG_STAGING_B64`
-- `KUBE_CONFIG_PRODUCTION_B64`
 - `GHCR_USERNAME`
 - `GHCR_TOKEN`
 - `SLACK_WEBHOOK_URL` valfri
-
-## Hur du skapar kubeconfig-secret
-
-Exportera kubeconfig-filen som base64 utan radbrytningar.
-
-Linux/macOS:
-
-```bash
-base64 -w 0 ~/.kube/config
-```
-
-PowerShell:
-
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME/.kube/config"))
-```
-
-Klistra in resultatet i GitHub Secret.
 
 ## GHCR
 
@@ -51,30 +34,32 @@ och aven:
 ghcr.io/<github-owner>/first-pipeline:latest
 ```
 
-## Viktigt om image pull i klustret
+## Lokal Kubernetes-demo i WSL
 
-Workflowen skapar ett `imagePullSecret` med namn `ghcr-creds` i namespace `boiler-room`.
+Om du kor `kind` lokalt i WSL ska deploymenten goras lokalt, inte fran GitHub Actions.
 
-Anvand ett PAT i `GHCR_TOKEN` som har ratt att lasa GHCR-packages. `GHCR_USERNAME` ska vara GitHub-anvandaren som tokenet tillhor.
+Exempel:
 
-## Branchlogik
+```bash
+docker build -t m4k-pipeline:demo .
+kind load docker-image m4k-pipeline:demo --name boiler-room
+./scripts/deploy.sh demo
+kubectl get all -n boiler-room
+kubectl port-forward service/first-pipeline 3000:3000 -n boiler-room
+```
 
-- Pull request mot `main` deployar till `staging`
-- Push till `main` deployar till `production`
+Det ar den rekommenderade modellen for presentationen:
+
+- GitHub Actions visar CI, image build/push och Trivy
+- WSL + kind visar Kubernetes-deployment live
 
 ## Vanliga fel
 
-- `KUBE_CONFIG_STAGING_B64 is not set`
-  Da saknas GitHub Secret for staging.
-
-- `KUBE_CONFIG_PRODUCTION_B64 is not set`
-  Da saknas GitHub Secret for production.
-
 - `GHCR_USERNAME or GHCR_TOKEN is not set`
-  Da saknas registry-auth for att Kubernetes ska kunna dra imagen.
+  Da saknas registry-auth for att pusha imagen till GHCR.
 
 - `ImagePullBackOff`
-  Klustret kommer inte at imagen i GHCR.
+  Om du kor lokalt kind ska du normalt ladda imagen direkt i klustret med `kind load docker-image`.
 
 - `rollout status` timeout
   Poddar startar inte korrekt. Kontrollera `kubectl get pods -n boiler-room` och `kubectl describe pod`.
