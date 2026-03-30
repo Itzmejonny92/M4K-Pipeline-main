@@ -75,14 +75,14 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ steps.image.outputs.image_ref }}:${{ steps.image.outputs.image_tag }}
-            ${{ steps.image.outputs.image_ref }}:latest
+            ${{ env.IMAGE_REF }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_REF }}:latest
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: image
-          image-ref: ${{ steps.image.outputs.image_ref }}:${{ steps.image.outputs.image_tag }}
+          image-ref: ${{ env.IMAGE_REF }}:${{ env.IMAGE_TAG }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
@@ -102,6 +102,7 @@ jobs:
 
     steps:
       - name: Slack notify failure
+        if: secrets.SLACK_WEBHOOK_URL != ''
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.event.pull_request.title || 'N/A' }}
@@ -109,11 +110,6 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ -z "$SLACK_WEBHOOK_URL" ]; then
-            echo "SLACK_WEBHOOK_URL is not set. Skipping Slack failure notification."
-            exit 0
-          fi
-
           payload=$(jq -n \
             --arg text "[ALERT] Pipeline failed\nRepository: ${{ github.repository }}\nAuthor: $COMMIT_AUTHOR\nCommit: $COMMIT_SHA\nMessage: $COMMIT_MESSAGE\nRun: $RUN_URL" \
             '{text: $text}')
