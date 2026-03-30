@@ -60,6 +60,20 @@ Members:
 - Chaos restart job is enabled for staging deploy flow.
 - Prometheus-format metrics are available at `GET /metrics/prometheus`.
 
+## DevSecOps Presentation Support
+- Presentation guide: `PRESENTATION_DEVSECOPS.md`
+- Demo helper for Windows PowerShell: `scripts/presentation-demo.ps1`
+- Kubernetes manifests: `k8s/`
+- Local Kubernetes deploy script: `scripts/deploy.sh`
+- GitHub Actions to Kubernetes setup: `GITHUB_ACTIONS_K8S_SETUP.md`
+
+Recommended presentation flow:
+1. Show GitHub Actions workflow in `.github/workflows/pipeline.yml`
+2. Run `npm test`
+3. Build the container with `docker build -t m4k-pipeline:demo .`
+4. Show app monitoring via `/health`, `/metrics`, and `/metrics/prometheus`
+5. Show Kubernetes resources with `kubectl get all -n boiler-room`
+
 ## Future Plans
 - Add Grafana dashboard JSON and link screenshots for metrics.
 - Add release tags with automated changelog generation.
