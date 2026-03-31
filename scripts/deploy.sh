@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Usage: ./scripts/deploy.sh [image-tag]
 TAG=${1:-local-v2}
+K8S_DIR="infra/k8s"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -21,9 +22,9 @@ else
 fi
 
 echo "Applying kustomize manifests (image tag: $TAG)"
-# write patch file with APP_VERSION so app reads deployed tag
-mkdir -p k8s/patches
-cat > k8s/patches/configmap-version.yaml <<EOF
+# Write patch file with APP_VERSION so app reads deployed tag.
+mkdir -p "$K8S_DIR/patches"
+cat > "$K8S_DIR/patches/configmap-version.yaml" <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -33,13 +34,11 @@ data:
   APP_VERSION: "${TAG}"
 EOF
 
-# apply via kustomize
-kubectl apply -k k8s/ --validate=false
+kubectl apply -k "$K8S_DIR/" --validate=false
 
 echo "Waiting for deployment rollout"
 kubectl -n boiler-room rollout status deployment/first-pipeline --timeout=120s || true
 
-# Restart deployment to pick up ConfigMap changes (bump pod template annotation)
 echo "Patching deployment to trigger restart so pods pick up new ConfigMap..."
 kubectl -n boiler-room patch deployment first-pipeline -p \
   "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"restartedAt\":\"$(date -Iseconds)\"}}}}}"

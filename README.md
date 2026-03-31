@@ -2,91 +2,89 @@
 
 [![CI/CD Pipeline](https://github.com/PalmChas/M4K-Pipeline/actions/workflows/pipeline.yml/badge.svg)](https://github.com/PalmChas/M4K-Pipeline/actions/workflows/pipeline.yml)
 
-```text
- __  __ _  _  _       ____  _            _ _
-|  \/  | || || |     |  _ \(_)_ __   ___| (_)_ __   ___
-| |\/| | || || |_    | |_) | | '_ \ / _ \ | | '_ \ / _ \
-| |  | |__   _|__|   |  __/| | |_) |  __/ | | | | |  __/
-|_|  |_|  |_|        |_|   |_| .__/ \___|_|_|_| |_|\___|
-                             |_|
-```
+Node/Express app built for the Week 4 Boiler Room CI/CD challenge, with supporting Kubernetes and Terraform material from later labs.
 
 Live deployment: [m4k-pipeline-production.up.railway.app](https://m4k-pipeline-production.up.railway.app)
 
-## About
-Week 4 Boiler Room Hackathon mission: build a full CI/CD pipeline with tests, Docker image build, Trivy scan and live deployment.
+## What Is In This Repo
 
-## Architecture
-```mermaid
-flowchart LR
-  A[Code Push / PR] --> B[GitHub Actions]
-  B --> C[npm ci]
-  C --> D[npm test]
-  D --> E[Docker Build]
-  E --> F[Trivy Scan]
-  F --> G[Deploy Hook]
-  G --> H[Railway Production URL]
+- App runtime files live in the repo root: `index.js`, `test.js`, `package.json`, `Dockerfile`
+- GitHub Actions pipeline lives in `.github/workflows/`
+- Kubernetes manifests live in `infra/k8s/`
+- Terraform configuration lives in `infra/terraform/`
+- Lab notes, reports, and archived course material live in `docs/`
+
+## Project Layout
+
+```text
+.
+|-- .github/workflows/
+|-- docs/
+|   |-- checklists/
+|   |-- reports/
+|   `-- week6/
+|-- infra/
+|   |-- k8s/
+|   `-- terraform/
+|-- scripts/
+|-- Dockerfile
+|-- index.js
+|-- package.json
+`-- test.js
 ```
 
-## Endpoints
-- `GET /` -> dashboard landing page
-- `GET /status` -> service status + timestamp
-- `GET /health` -> health check + uptime
-- `GET /metrics` -> request count and average response time metrics
+## Run Locally
 
-## Pipeline Demo GIF
-![Pipeline Demo](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWluNnN6dW5va2N1bDh1d2NubTRrMXh2Y2t6aW1wNnFhNXV0a2g4biZlcD12MV9naWZzX3NlYXJjaCZjdD1n/coxQHKASG60HrHtvkt/giphy.gif)
+```bash
+npm ci
+npm test
+npm start
+```
+
+The app starts on the configured `PORT` or `3000` by default.
+
+## Endpoints
+
+- `GET /` -> dashboard landing page
+- `GET /status` -> service status and timestamp
+- `GET /health` -> health check and uptime
+- `GET /metrics` -> request count and average response time metrics
+- `GET /metrics/prometheus` -> Prometheus-format metrics
+
+## CI/CD Summary
+
+The GitHub Actions pipeline runs:
+
+- `npm ci`
+- `npm test`
+- Docker image build
+- Trivy image scan
+- staging and production deploy hooks
+- Slack notifications for success and failure
+
+## Infrastructure
+
+- Kubernetes manifests: `infra/k8s/`
+- Additional RBAC manifests: `infra/k8s/rbac/`
+- Terraform lab files: `infra/terraform/`
+- Helper scripts: `scripts/deploy.sh`, `scripts/cleanup-old-rs.sh`
+
+See `infra/k8s/README.md` for the local Kubernetes workflow.
+
+## Documentation
+
+Supporting notes and lab reports were moved out of the root directory to make the repo easier to navigate:
+
+- `docs/checklists/`
+- `docs/reports/`
+- `docs/week6/`
 
 ## Team
+
 Team name: `M4K Gang`
 
-Members:
 - Oskar Palm
 - Carl Persson
 - Jonny Nguyen
 - Julia Persson
 - Mattej Petrovic
-
-### Team Bios
-- 🧭 Oskar Palm - Navigator who keeps architecture and direction aligned.
-- ⚙️ Carl Persson - Driver focused on implementation and delivery speed.
-- 🔍 Jonny Nguyen - Researcher who hunts fixes and improves workflow reliability.
-- 🧪 Julia Persson - Tester validating behavior and catching regressions early.
-- 🚀 Mattej Petrovic - DevOps finisher driving deployment and release polish.
-
-## Implemented Upgrades
-- Staging and production deployment jobs are configured in GitHub Actions.
-- Slack notifications are sent on successful deploy and pipeline failure.
-- Chaos restart job is enabled for staging deploy flow.
-- Prometheus-format metrics are available at `GET /metrics/prometheus`.
-
-## Future Plans
-- Add Grafana dashboard JSON and link screenshots for metrics.
-- Add release tags with automated changelog generation.
-- Add canary deploy strategy for production rollouts.
-- Add SLO error-budget tracking and alert thresholds.
-
-## Trivy Findings (2026-02-10)
-Latest local scan report: `trivy-report.txt`
-
-Summary:
-- OS packages (alpine): 32 total (CRITICAL: 2, HIGH: 4, MEDIUM: 21, LOW: 5)
-- Node.js packages: 7 total (CRITICAL: 0, HIGH: 5, MEDIUM: 0, LOW: 2)
-
-Key findings:
-- `libcrypto3` / `libssl3`: `CVE-2025-15467` (CRITICAL), fixed in `3.3.6-r0`
-- OpenSSL: `CVE-2025-69419` (HIGH)
-- `cross-spawn@7.0.3`: `CVE-2024-21538` (HIGH), fixed in `7.0.5`
-- `glob@10.4.2`: `CVE-2025-64756` (HIGH), fixed in `10.5.0` or `11.1.0`
-
-Misconfiguration found earlier:
-- `DS-0002`: container ran as root
-- Status: fixed by setting `USER node` in `Dockerfile`
-
-## Status
-- All tests passing
-- Security scan complete
-- Deployed to production
-- `/metrics` endpoint implemented
-
-<!-- Careful readers only: try the hidden endpoint /secret -->
